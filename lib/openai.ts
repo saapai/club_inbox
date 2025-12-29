@@ -23,6 +23,6 @@ export function getOpenAI(): OpenAI {
 // Export lazy getter - don't initialize at module load time
 // This prevents build-time errors when OPENAI_API_KEY is not set
 
-export const EXTRACTION_MODEL = 'gpt-4-turbo-preview';
-export const VISION_MODEL = 'gpt-4-vision-preview';
+export const EXTRACTION_MODEL = 'gpt-4-turbo';
+export const VISION_MODEL = 'gpt-4o';
 
