@@ -16,14 +16,21 @@ export default function PhotoModal({ isOpen, onClose, onUpload, initialFiles = [
 
   // Load initial files when modal opens
   useEffect(() => {
+    console.log('PhotoModal isOpen changed:', isOpen);
     if (isOpen && initialFiles.length > 0) {
+      console.log('Loading initial files:', initialFiles.length);
       setFiles(initialFiles);
     } else if (!isOpen) {
       setFiles([]);
     }
   }, [isOpen, initialFiles]);
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    console.log('PhotoModal not rendering - isOpen is false');
+    return null;
+  }
+
+  console.log('PhotoModal rendering with files:', files.length);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();

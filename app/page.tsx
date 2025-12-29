@@ -22,6 +22,13 @@ export default function Home() {
   const [showSheetsModal, setShowSheetsModal] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  
+  // Debug: Log modal state changes
+  useEffect(() => {
+    console.log('showPasteModal:', showPasteModal);
+    console.log('showPhotoModal:', showPhotoModal);
+    console.log('showSheetsModal:', showSheetsModal);
+  }, [showPasteModal, showPhotoModal, showSheetsModal]);
   const [editingClaim, setEditingClaim] = useState<Claim | null>(null);
   const [historyClaimId, setHistoryClaimId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,6 +76,7 @@ export default function Home() {
     const handleDrop = (e: DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
+      console.log('Drop event triggered', e.dataTransfer?.files);
       setIsDragging(false);
 
       if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
@@ -76,8 +84,11 @@ export default function Home() {
           file.type.startsWith('image/')
         );
         
+        console.log('Image files detected:', imageFiles.length);
+        
         if (imageFiles.length > 0) {
           // Store files and open photo modal
+          console.log('Setting dropped files and opening modal');
           setDroppedFiles(imageFiles);
           setShowPhotoModal(true);
         }

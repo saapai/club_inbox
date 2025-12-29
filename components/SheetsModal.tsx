@@ -21,8 +21,11 @@ export default function SheetsModal({ isOpen, onClose, onImport }: SheetsModalPr
   const [range, setRange] = useState('Sheet1!A1:Z100');
   const [isImporting, setIsImporting] = useState(false);
 
+  console.log('SheetsModal isOpen:', isOpen);
+
   useEffect(() => {
     if (isOpen) {
+      console.log('SheetsModal opened, checking connection');
       checkConnection();
     }
   }, [isOpen]);

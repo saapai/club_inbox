@@ -12,7 +12,11 @@ export default function PasteModal({ isOpen, onClose, onSubmit }: PasteModalProp
   const [text, setText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  console.log('PasteModal isOpen:', isOpen);
+  
   if (!isOpen) return null;
+
+  console.log('PasteModal rendering');
 
   const handleSubmit = async () => {
     if (!text.trim() || isSubmitting) return;
