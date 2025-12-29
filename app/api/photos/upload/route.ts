@@ -45,7 +45,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Upload to Supabase Storage
-    const fileName = `${Date.now()}-${file.name}`;
+    // Sanitize filename - Supabase Storage doesn't allow spaces, colons, and certain special chars
+    const sanitizeFileName = (name: string): string => {
+      // Extract file extension
+      const lastDot = name.lastIndexOf('.');
+      const extension = lastDot > 0 ? name.slice(lastDot) : '';
+      const baseName = lastDot > 0 ? name.slice(0, lastDot) : name;
+      
+      // Replace invalid characters with underscores
+      // Allowed: alphanumeric, hyphens, underscores, dots
+      const sanitized = baseName
+        .replace(/[^a-zA-Z0-9._-]/g, '_')
+        .replace(/_{2,}/g, '_') // Replace multiple underscores with single
+        .replace(/^_+|_+$/g, ''); // Remove leading/trailing underscores
+      
+      return `${Date.now()}-${sanitized}${extension}`;
+    };
+    
+    const fileName = sanitizeFileName(file.name);
     
     // Convert File to ArrayBuffer for Supabase
     const arrayBuffer = await file.arrayBuffer();
