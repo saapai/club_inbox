@@ -61,6 +61,7 @@ export default function TopBar({ clubName, onAddSource, onSearch }: TopBarProps)
               <div className="absolute right-0 mt-2 w-48 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-lg shadow-lg overflow-hidden animate-slide-in">
                 <button
                   onClick={() => {
+                    console.log('Paste Text button clicked in TopBar');
                     onAddSource('paste');
                     setShowAddMenu(false);
                   }}
@@ -79,6 +80,7 @@ export default function TopBar({ clubName, onAddSource, onSearch }: TopBarProps)
                 </button>
                 <button
                   onClick={() => {
+                    console.log('Upload Photos button clicked in TopBar');
                     onAddSource('photo');
                     setShowAddMenu(false);
                   }}
