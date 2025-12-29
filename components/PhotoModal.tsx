@@ -1,17 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface PhotoModalProps {
   isOpen: boolean;
   onClose: () => void;
   onUpload: (files: File[]) => Promise<void>;
+  initialFiles?: File[];
 }
 
-export default function PhotoModal({ isOpen, onClose, onUpload }: PhotoModalProps) {
+export default function PhotoModal({ isOpen, onClose, onUpload, initialFiles = [] }: PhotoModalProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+
+  // Load initial files when modal opens
+  useEffect(() => {
+    if (isOpen && initialFiles.length > 0) {
+      setFiles(initialFiles);
+    } else if (!isOpen) {
+      setFiles([]);
+    }
+  }, [isOpen, initialFiles]);
 
   if (!isOpen) return null;
 
@@ -85,10 +95,11 @@ export default function PhotoModal({ isOpen, onClose, onUpload }: PhotoModalProp
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
+          onClick={() => document.getElementById('file-input')?.click()}
+          className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors cursor-pointer ${
             dragActive
               ? 'border-[var(--highlight-blue)] bg-[var(--bg-hover)]'
-              : 'border-[var(--border)] hover:border-[var(--border-active)]'
+              : 'border-[var(--border)] hover:border-[var(--border-active)] hover:bg-[var(--bg-hover)]'
           }`}
         >
           <input
@@ -99,18 +110,15 @@ export default function PhotoModal({ isOpen, onClose, onUpload }: PhotoModalProp
             onChange={handleFileInput}
             className="hidden"
           />
-          <label
-            htmlFor="file-input"
-            className="cursor-pointer text-[var(--text-meta)] hover:text-[var(--text-on-dark)] transition-colors"
-          >
-            <div className="text-4xl mb-4">📷</div>
-            <div className="text-sm">
+          <div className="text-[var(--text-meta)] hover:text-[var(--text-on-dark)] transition-colors">
+            <div className="text-6xl mb-4">📷</div>
+            <div className="text-base font-medium mb-2">
               Drag and drop images here, or click to browse
             </div>
-            <div className="text-xs mt-2 opacity-60">
+            <div className="text-xs opacity-70">
               Supports JPG, PNG, GIF, WebP
             </div>
-          </label>
+          </div>
         </div>
 
         {/* File list */}

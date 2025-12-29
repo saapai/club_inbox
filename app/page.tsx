@@ -26,6 +26,8 @@ export default function Home() {
   const [historyClaimId, setHistoryClaimId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showEmptyStateMenu, setShowEmptyStateMenu] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
 
   const clubName = 'Demo Club';
 
@@ -39,6 +41,61 @@ export default function Home() {
     fetchClaims();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategoryId]);
+
+  // Global drag-and-drop handlers
+  useEffect(() => {
+    const handleDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer?.types.includes('Files')) {
+        setIsDragging(true);
+      }
+    };
+
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    const handleDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Only hide if we're leaving the window
+      if (!e.relatedTarget || (e.relatedTarget as Node).nodeName === 'HTML') {
+        setIsDragging(false);
+      }
+    };
+
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(false);
+
+      if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+        const imageFiles = Array.from(e.dataTransfer.files).filter((file) =>
+          file.type.startsWith('image/')
+        );
+        
+        if (imageFiles.length > 0) {
+          // Store files and open photo modal
+          setDroppedFiles(imageFiles);
+          setShowPhotoModal(true);
+        }
+      }
+    };
+
+    document.addEventListener('dragenter', handleDragEnter);
+    document.addEventListener('dragover', handleDragOver);
+    document.addEventListener('dragleave', handleDragLeave);
+    document.addEventListener('drop', handleDrop);
+
+    return () => {
+      document.removeEventListener('dragenter', handleDragEnter);
+      document.removeEventListener('dragover', handleDragOver);
+      document.removeEventListener('dragleave', handleDragLeave);
+      document.removeEventListener('drop', handleDrop);
+    };
+  }, []);
 
   const fetchCategories = async () => {
     try {
@@ -69,11 +126,15 @@ export default function Home() {
   };
 
   const handleAddSource = (type: 'paste' | 'sheet' | 'photo') => {
+    console.log('handleAddSource called with type:', type);
     if (type === 'paste') {
+      console.log('Opening paste modal');
       setShowPasteModal(true);
     } else if (type === 'sheet') {
+      console.log('Opening sheets modal');
       setShowSheetsModal(true);
     } else if (type === 'photo') {
+      console.log('Opening photo modal');
       setShowPhotoModal(true);
     }
   };
@@ -212,6 +273,18 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-main)]">
+      {/* Global drag indicator */}
+      {isDragging && (
+        <div className="fixed inset-0 z-[200] bg-[var(--highlight-blue)]/20 backdrop-blur-sm border-4 border-dashed border-[var(--highlight-blue)] flex items-center justify-center pointer-events-none">
+          <div className="bg-[var(--bg-elevated)] border-2 border-[var(--highlight-blue)] rounded-lg p-8 shadow-2xl">
+            <div className="text-6xl mb-4 text-center">📷</div>
+            <div className="text-xl font-semibold text-[var(--text-on-dark)] text-center">
+              Drop images to upload
+            </div>
+          </div>
+        </div>
+      )}
+
       <TopBar
         clubName={clubName}
         onAddSource={handleAddSource}
@@ -322,8 +395,12 @@ export default function Home() {
 
       <PhotoModal
         isOpen={showPhotoModal}
-        onClose={() => setShowPhotoModal(false)}
+        onClose={() => {
+          setShowPhotoModal(false);
+          setDroppedFiles([]);
+        }}
         onUpload={handlePhotoUpload}
+        initialFiles={droppedFiles}
       />
 
       <HistoryModal
