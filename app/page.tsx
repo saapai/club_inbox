@@ -251,29 +251,49 @@ export default function Home() {
   };
 
   const handlePhotoUpload = async (files: File[]) => {
+    console.log('handlePhotoUpload called with', files.length, 'files');
     try {
       for (const file of files) {
+        console.log('Processing file:', file.name);
         const formData = new FormData();
         formData.append('file', file);
         formData.append('title', file.name);
 
+        console.log('Uploading to /api/photos/upload...');
         const uploadRes = await fetch('/api/photos/upload', {
           method: 'POST',
           body: formData,
         });
 
-        if (!uploadRes.ok) throw new Error('Failed to upload photo');
+        if (!uploadRes.ok) {
+          const errorData = await uploadRes.json();
+          console.error('Upload failed:', errorData);
+          throw new Error(`Failed to upload photo: ${errorData.error || 'Unknown error'}`);
+        }
 
         const { source } = await uploadRes.json();
+        console.log('Photo uploaded, source ID:', source.id);
 
         // Trigger OCR processing
-        await fetch(`/api/photos/${source.id}/ocr`, {
+        console.log('Starting OCR processing...');
+        const ocrRes = await fetch(`/api/photos/${source.id}/ocr`, {
           method: 'POST',
         });
+
+        if (!ocrRes.ok) {
+          const errorData = await ocrRes.json();
+          console.error('OCR failed:', errorData);
+          throw new Error(`Failed to process OCR: ${errorData.error || 'Unknown error'}`);
+        }
+
+        const ocrData = await ocrRes.json();
+        console.log('OCR completed:', ocrData);
       }
 
       // Refresh claims
+      console.log('Refreshing claims...');
       await fetchClaims();
+      console.log('Claims refreshed successfully');
     } catch (error) {
       console.error('Failed to upload photos:', error);
       throw error;

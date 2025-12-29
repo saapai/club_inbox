@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface PhotoModalProps {
   isOpen: boolean;
@@ -13,6 +14,12 @@ export default function PhotoModal({ isOpen, onClose, onUpload, initialFiles = [
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   // Load initial files when modal opens
   useEffect(() => {
@@ -25,8 +32,8 @@ export default function PhotoModal({ isOpen, onClose, onUpload, initialFiles = [
     }
   }, [isOpen, initialFiles]);
 
-  if (!isOpen) {
-    console.log('PhotoModal not rendering - isOpen is false');
+  if (!isOpen || !mounted) {
+    console.log('PhotoModal not rendering - isOpen is false or not mounted');
     return null;
   }
 
@@ -58,10 +65,12 @@ export default function PhotoModal({ isOpen, onClose, onUpload, initialFiles = [
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('File input changed, files:', e.target.files);
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files).filter((file) =>
         file.type.startsWith('image/')
       );
+      console.log('Adding files:', newFiles.length);
       setFiles((prev) => [...prev, ...newFiles]);
     }
   };
@@ -71,39 +80,58 @@ export default function PhotoModal({ isOpen, onClose, onUpload, initialFiles = [
   };
 
   const handleUpload = async () => {
-    if (files.length === 0 || isUploading) return;
+    console.log('Upload button clicked, files:', files.length);
+    if (files.length === 0 || isUploading) {
+      console.log('Upload aborted - no files or already uploading');
+      return;
+    }
 
     setIsUploading(true);
     try {
+      console.log('Starting upload for', files.length, 'files');
       await onUpload(files);
+      console.log('Upload completed successfully');
       setFiles([]);
       onClose();
     } catch (error) {
       console.error('Failed to upload:', error);
+      alert('Failed to upload photos. Please try again.');
     } finally {
       setIsUploading(false);
     }
   };
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 flex items-center justify-center p-8 z-[100]"
       onClick={onClose}
-      style={{ 
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 9999,
         backgroundColor: 'rgba(0, 0, 0, 0.85)',
-        backdropFilter: 'blur(4px)'
+        backdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '32px',
       }}
     >
       <div
-        className="w-full max-w-2xl rounded-lg shadow-2xl p-8"
         onClick={(e) => e.stopPropagation()}
-        style={{ 
+        style={{
+          width: '100%',
+          maxWidth: '800px',
           backgroundColor: '#1a1a2e',
-          color: '#ffffff',
-          border: '1px solid #333'
+          borderRadius: '8px',
+          padding: '32px',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+          border: '1px solid #333',
         }}
       >
-        <h2 className="text-xl font-semibold mb-6 tracking-tight" style={{ color: '#ffffff' }}>
+        <h2 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '24px', color: '#d9ccba', letterSpacing: '-0.01em' }}>
           upload photos<span style={{ color: '#ce6087' }}>_</span>
         </h2>
 
@@ -114,10 +142,14 @@ export default function PhotoModal({ isOpen, onClose, onUpload, initialFiles = [
           onDragOver={handleDrag}
           onDrop={handleDrop}
           onClick={() => document.getElementById('file-input')?.click()}
-          className="border-2 border-dashed rounded-lg p-12 text-center transition-colors cursor-pointer"
           style={{
-            borderColor: dragActive ? '#3b7c96' : '#666',
-            backgroundColor: dragActive ? 'rgba(59, 124, 150, 0.1)' : 'transparent'
+            border: dragActive ? '2px dashed #3b7c96' : '2px dashed rgba(255, 255, 255, 0.18)',
+            backgroundColor: dragActive ? 'rgba(59, 124, 150, 0.1)' : 'transparent',
+            borderRadius: '8px',
+            padding: '48px',
+            textAlign: 'center',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
           }}
         >
           <input
@@ -126,14 +158,14 @@ export default function PhotoModal({ isOpen, onClose, onUpload, initialFiles = [
             multiple
             accept="image/*"
             onChange={handleFileInput}
-            className="hidden"
+            style={{ display: 'none' }}
           />
-          <div className="transition-colors" style={{ color: '#ffffff' }}>
-            <div className="text-6xl mb-4">📷</div>
-            <div className="text-base font-medium mb-2">
+          <div style={{ color: '#7e858c' }}>
+            <div style={{ fontSize: '60px', marginBottom: '16px' }}>📷</div>
+            <div style={{ fontSize: '16px', fontWeight: 500, marginBottom: '8px', color: '#d9ccba' }}>
               Drag and drop images here, or click to browse
             </div>
-            <div className="text-xs opacity-70">
+            <div style={{ fontSize: '12px', opacity: 0.7 }}>
               Supports JPG, PNG, GIF, WebP
             </div>
           </div>
@@ -141,32 +173,46 @@ export default function PhotoModal({ isOpen, onClose, onUpload, initialFiles = [
 
         {/* File list */}
         {files.length > 0 && (
-          <div className="mt-4 space-y-2">
-            <div className="text-sm mb-2" style={{ color: '#aaa' }}>
+          <div style={{ marginTop: '16px' }}>
+            <div style={{ fontSize: '14px', color: '#7e858c', marginBottom: '8px' }}>
               {files.length} file{files.length !== 1 ? 's' : ''} selected
             </div>
-            <div className="max-h-40 overflow-y-auto space-y-2">
+            <div style={{ maxHeight: '160px', overflowY: 'auto' }}>
               {files.map((file, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-3 rounded-lg"
-                  style={{ backgroundColor: '#252830' }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px',
+                    backgroundColor: '#16191d',
+                    borderRadius: '8px',
+                    marginBottom: '8px',
+                  }}
                 >
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="text-2xl">🖼️</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm truncate" style={{ color: '#ffffff' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '24px' }}>🖼️</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '14px', color: '#d9ccba', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {file.name}
                       </div>
-                      <div className="text-xs" style={{ color: '#aaa' }}>
+                      <div style={{ fontSize: '12px', color: '#7e858c' }}>
                         {(file.size / 1024).toFixed(1)} KB
                       </div>
                     </div>
                   </div>
                   <button
                     onClick={() => removeFile(index)}
-                    className="px-2 py-1 rounded transition-colors"
-                    style={{ color: '#ce6087' }}
+                    style={{
+                      color: '#ce6087',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '16px',
+                    }}
                   >
                     ✕
                   </button>
@@ -176,22 +222,37 @@ export default function PhotoModal({ isOpen, onClose, onUpload, initialFiles = [
           </div>
         )}
 
-        <div className="mt-6 flex justify-end gap-4">
+        <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '16px' }}>
           <button
             onClick={onClose}
-            className="px-5 py-2.5 text-sm rounded-lg transition-all font-mono"
-            style={{ color: '#ffffff', backgroundColor: 'transparent', border: '1px solid #555' }}
+            style={{
+              padding: '10px 20px',
+              fontSize: '14px',
+              color: '#d9ccba',
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontFamily: 'JetBrains Mono, monospace',
+              transition: 'all 0.2s ease',
+            }}
           >
             cancel
           </button>
           <button
             onClick={handleUpload}
             disabled={files.length === 0 || isUploading}
-            className="px-6 py-2.5 text-sm font-mono rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-            style={{ 
-              backgroundColor: '#3b7c96', 
-              color: '#ffffff',
-              border: '2px solid #3b7c96'
+            style={{
+              padding: '10px 24px',
+              fontSize: '14px',
+              fontFamily: 'JetBrains Mono, monospace',
+              backgroundColor: '#d6c9ba',
+              color: '#3a3a3c',
+              border: '2px solid #c4b5a0',
+              borderRadius: '8px',
+              cursor: files.length === 0 || isUploading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s ease',
+              opacity: files.length === 0 || isUploading ? 0.3 : 1,
             }}
           >
             {isUploading ? 'processing...' : `upload & extract (${files.length})`}
@@ -200,5 +261,7 @@ export default function PhotoModal({ isOpen, onClose, onUpload, initialFiles = [
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
 
