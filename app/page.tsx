@@ -2,52 +2,39 @@
 
 import { useState, useEffect } from 'react';
 import TopBar from '@/components/TopBar';
-import CategoryRail from '@/components/CategoryRail';
-import ClaimCard from '@/components/ClaimCard';
+import ClaimsMatrix from '@/components/ClaimsMatrix';
+import ClaimDrawer from '@/components/ClaimDrawer';
 import PasteModal from '@/components/PasteModal';
 import EditModal from '@/components/EditModal';
 import SheetsModal from '@/components/SheetsModal';
 import PhotoModal from '@/components/PhotoModal';
 import HistoryModal from '@/components/HistoryModal';
-import { Category, Claim, EvidenceChunk } from '@/lib/types';
+import { Category, Claim, Club } from '@/lib/types';
 
 export default function Home() {
+  const [clubs, setClubs] = useState<Club[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [claims, setClaims] = useState<Claim[]>([]);
-  const [evidenceMap, setEvidenceMap] = useState<Record<string, EvidenceChunk[]>>({});
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const [claimCounts, setClaimCounts] = useState<Record<string, { total: number; disputed: number }>>({});
+  const [claims, setClaims] = useState<(Claim & { category_key: string; sources_count: number })[]>([]);
+  const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showSheetsModal, setShowSheetsModal] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
-  
-  // Debug: Log modal state changes
-  useEffect(() => {
-    console.log('showPasteModal:', showPasteModal);
-    console.log('showPhotoModal:', showPhotoModal);
-    console.log('showSheetsModal:', showSheetsModal);
-  }, [showPasteModal, showPhotoModal, showSheetsModal]);
+  const [showClaimDrawer, setShowClaimDrawer] = useState(false);
   const [editingClaim, setEditingClaim] = useState<Claim | null>(null);
   const [historyClaimId, setHistoryClaimId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showEmptyStateMenu, setShowEmptyStateMenu] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
 
-  const clubName = 'Demo Club';
+  const clubName = clubs[0]?.name || 'Demo Club';
 
-  // Fetch categories
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  // Fetch claims when category changes
+  // Fetch claims
   useEffect(() => {
     fetchClaims();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategoryId]);
+  }, []);
 
   // Global drag-and-drop handlers
   useEffect(() => {
@@ -108,27 +95,14 @@ export default function Home() {
     };
   }, []);
 
-  const fetchCategories = async () => {
-    try {
-      const res = await fetch('/api/categories');
-      const data = await res.json();
-      setCategories(data.categories || []);
-    } catch (error) {
-      console.error('Failed to fetch categories:', error);
-    }
-  };
-
   const fetchClaims = async () => {
     setLoading(true);
     try {
-      const url = selectedCategoryId
-        ? `/api/claims?category_id=${selectedCategoryId}`
-        : '/api/claims';
-      const res = await fetch(url);
+      const res = await fetch('/api/claims');
       const data = await res.json();
+      setClubs(data.clubs || []);
+      setCategories(data.categories || []);
       setClaims(data.claims || []);
-      setEvidenceMap(data.evidence || {});
-      setClaimCounts(data.counts || {});
     } catch (error) {
       console.error('Failed to fetch claims:', error);
     } finally {
@@ -180,8 +154,12 @@ export default function Home() {
   };
 
   const handleSearch = (query: string) => {
-    console.log('Search:', query);
-    // TODO: Implement search
+    setSearchQuery(query);
+  };
+
+  const handleCellClick = (claim: Claim | null) => {
+    setSelectedClaim(claim);
+    setShowClaimDrawer(true);
   };
 
   const handleEdit = (claimId: string) => {
@@ -220,8 +198,12 @@ export default function Home() {
 
       if (!res.ok) throw new Error('Failed to update status');
 
-      // Refresh claims
+      // Refresh claims and update selected claim
       await fetchClaims();
+      if (selectedClaim && selectedClaim.id === claimId) {
+        const updatedClaim = { ...selectedClaim, status };
+        setSelectedClaim(updatedClaim);
+      }
     } catch (error) {
       console.error('Failed to update status:', error);
     }
@@ -300,8 +282,6 @@ export default function Home() {
     }
   };
 
-  const filteredClaims = claims;
-
   return (
     <div className="min-h-screen bg-[var(--bg-main)]">
       {/* Global drag indicator */}
@@ -322,84 +302,29 @@ export default function Home() {
         onSearch={handleSearch}
       />
 
-      <CategoryRail
-        categories={categories}
-        selectedCategoryId={selectedCategoryId}
-        onSelectCategory={setSelectedCategoryId}
-        claimCounts={claimCounts}
-      />
-
-      {/* Main canvas - add left margin for category rail */}
-      <main className="ml-64 pt-16 min-h-screen">
-        <div className="max-w-5xl mx-auto p-6">
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <span className="text-[var(--text-meta)] animate-pulse">loading...</span>
-            </div>
-          ) : filteredClaims.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-center">
-              <p className="text-[var(--text-meta)] mb-4">No claims yet</p>
-              <div className="relative">
-                <button
-                  onClick={() => setShowEmptyStateMenu(!showEmptyStateMenu)}
-                  className="button"
-                >
-                  + Add your first source
-                </button>
-                {showEmptyStateMenu && (
-                  <div className="absolute left-1/2 transform -translate-x-1/2 mt-2 w-48 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-lg shadow-lg overflow-hidden animate-slide-in z-10">
-                    <button
-                      onClick={() => {
-                        handleAddSource('paste');
-                        setShowEmptyStateMenu(false);
-                      }}
-                      className="w-full px-4 py-3 text-left text-sm text-[var(--text-on-dark)] hover:bg-[var(--bg-hover)] transition-colors"
-                    >
-                      📝 Paste Text
-                    </button>
-                    <button
-                      onClick={() => {
-                        handleAddSource('sheet');
-                        setShowEmptyStateMenu(false);
-                      }}
-                      className="w-full px-4 py-3 text-left text-sm text-[var(--text-on-dark)] hover:bg-[var(--bg-hover)] transition-colors"
-                    >
-                      📊 Connect Sheet
-                    </button>
-                    <button
-                      onClick={() => {
-                        handleAddSource('photo');
-                        setShowEmptyStateMenu(false);
-                      }}
-                      className="w-full px-4 py-3 text-left text-sm text-[var(--text-on-dark)] hover:bg-[var(--bg-hover)] transition-colors"
-                    >
-                      📷 Upload Photos
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredClaims.map((claim) => {
-                const category = categories.find((c) => c.id === claim.category_id);
-                if (!category) return null;
-                
-                return (
-                  <ClaimCard
-                    key={claim.id}
-                    claim={claim}
-                    category={category}
-                    evidenceChunks={evidenceMap[claim.id] || []}
-                    onEdit={handleEdit}
-                    onStatusChange={handleStatusChange}
-                    onViewHistory={handleViewHistory}
-                  />
-                );
-              })}
-            </div>
-          )}
-        </div>
+      {/* Main canvas - Matrix view */}
+      <main className="pt-16 min-h-screen">
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <span className="text-[var(--text-meta)] animate-pulse">loading...</span>
+          </div>
+        ) : claims.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-64 text-center">
+            <p className="text-[var(--text-meta)] mb-4">No claims yet</p>
+            <button onClick={() => handleAddSource('paste')} className="button">
+              + Add your first source
+            </button>
+          </div>
+        ) : (
+          <ClaimsMatrix
+            clubs={clubs}
+            categories={categories}
+            claims={claims}
+            selectedClaim={selectedClaim}
+            onCellClick={handleCellClick}
+            searchQuery={searchQuery}
+          />
+        )}
       </main>
 
       <PasteModal
@@ -441,6 +366,18 @@ export default function Home() {
           setShowHistoryModal(false);
           setHistoryClaimId(null);
         }}
+      />
+
+      <ClaimDrawer
+        claim={selectedClaim}
+        isOpen={showClaimDrawer}
+        onClose={() => {
+          setShowClaimDrawer(false);
+          setSelectedClaim(null);
+        }}
+        onEdit={handleEdit}
+        onStatusChange={handleStatusChange}
+        onViewHistory={handleViewHistory}
       />
     </div>
   );
