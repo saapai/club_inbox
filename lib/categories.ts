@@ -15,6 +15,9 @@ const KEY_MAPPING: Record<string, CategoryKey> = {
   volunteer: 'volunteer_work_requirement',
   fundraising: 'fundraising_requirement',
   attendance: 'attendance',
+  work_week: 'work_this_week',
+  work_signup: 'signed_up_for_work',
+  volunteer_signup: 'signed_up_for_volunteering',
   points: 'attendance',
   admin: 'attendance',
 };

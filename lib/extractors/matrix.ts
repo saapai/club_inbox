@@ -4,10 +4,12 @@ const MATRIX_EXTRACTION_PROMPT = `You are an expert at extracting structured clu
 
 Your task:
 1. Identify ALL club names from column headers
-2. Identify ALL category/requirement types from row labels
-3. Extract the claim/requirement text for each (club, category) cell
+2. Identify ALL category/requirement types from row labels (including "Work this week", "Signed up for work", "Signed up for volunteering")
+3. Extract the claim/requirement text for each (club, category) cell - EVEN IF IT LOOKS INCOMPLETE OR PARTIAL
 4. Normalize claims into clear, canonical statements
 5. Extract structured data (quantities, units, cadences) when possible
+
+CRITICAL: Extract ALL rows, including rows 4-6 which may have partial data, N/A, or work-in-progress items.
 
 Output JSON format:
 {
@@ -45,11 +47,22 @@ Output JSON format:
 
 Rules:
 - Extract ALL clubs shown in the image
-- Use category keys: social, volunteer, fundraising, attendance, points, admin
-- For N/A or empty cells, skip (don't create claims)
+- Use category keys: 
+  * "social" for social requirements
+  * "volunteer" for volunteer/work requirements
+  * "fundraising" for fundraising requirements
+  * "attendance" for attendance requirements
+  * "work_week" for "Work this week" rows
+  * "work_signup" for "Signed up for work" rows
+  * "volunteer_signup" for "Signed up for volunteering" rows
+  * "points" for point requirements
+  * "admin" for other requirements
+- For cells with "N/A", create a claim with text "Not applicable" and low confidence
+- For cells that seem empty or have "—", skip those (don't create claims)
 - Normalize text to be clear and professional
 - Extract structured data when possible (quantities, cadences, units)
-- If the claim mentions "done" or "completed", include that in structured data as completion status`;
+- If the claim mentions "done" or "completed", include that in structured data as completion status
+- IMPORTANT: Process ALL rows in the table, especially rows for work signup and volunteering`;
 
 export type MatrixExtractionOutput = {
   clubs: Array<{ name: string }>;

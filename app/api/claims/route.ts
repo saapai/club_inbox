@@ -9,15 +9,20 @@ export async function GET(request: NextRequest) {
     const categoryId = searchParams.get('category_id');
     const clubId = process.env.DEFAULT_CLUB_ID || 'a0000000-0000-0000-0000-000000000001';
 
-    // Fetch all clubs
+    // Fetch all clubs (excluding Demo Club if other clubs exist)
     const { data: clubsData } = await supabase
       .from('clubs')
       .select('id, name')
       .order('name');
     
-    const clubs = clubsData && clubsData.length > 0 
+    let clubs = clubsData && clubsData.length > 0 
       ? clubsData 
       : [{ id: clubId, name: 'Demo Club' }];
+    
+    // If there are real clubs besides Demo Club, exclude Demo Club
+    if (clubs.length > 1) {
+      clubs = clubs.filter(c => c.name !== 'Demo Club');
+    }
 
     // Fetch categories for all clubs
     const clubIds = clubs.map(c => c.id);
