@@ -9,30 +9,31 @@ export async function GET(request: NextRequest) {
     const categoryId = searchParams.get('category_id');
     const clubId = process.env.DEFAULT_CLUB_ID || 'a0000000-0000-0000-0000-000000000001';
 
-    // Fetch clubs (for now, just the default club)
+    // Fetch all clubs
     const { data: clubsData } = await supabase
       .from('clubs')
       .select('id, name')
-      .eq('id', clubId);
+      .order('name');
     
     const clubs = clubsData && clubsData.length > 0 
       ? clubsData 
       : [{ id: clubId, name: 'Demo Club' }];
 
-    // Fetch categories
+    // Fetch categories for all clubs
+    const clubIds = clubs.map(c => c.id);
     const { data: categories, error: categoriesError } = await supabase
       .from('categories')
-      .select('id, key, label')
-      .eq('club_id', clubId)
+      .select('id, key, label, club_id')
+      .in('club_id', clubIds)
       .order('order_index');
 
     if (categoriesError) throw categoriesError;
 
-    // Build query
+    // Fetch claims for all clubs
     let query = supabase
       .from('claims')
       .select('*')
-      .eq('club_id', clubId)
+      .in('club_id', clubIds)
       .order('created_at', { ascending: false });
 
     if (categoryId) {
